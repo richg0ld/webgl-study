@@ -13,6 +13,7 @@ void main(){
 	gl_Position = a_position;
 }
 </script>
+<!-- 현재 사용중인 버텍스 쉐이더 -->
 <script id="2d-vertex-shader2" type="notjs">
 attribute vec2 a_position;
 uniform vec2 u_resolution;
@@ -45,6 +46,7 @@ void main(){
 	gl_FragColor = vec4(1, 0, 0.5, 1);
 }
 </script>
+<!--사용중인 프래그먼트 셰이더-->
 <script id="2d-fragment-shader2" type="notjs">
 precision mediump float;
 uniform vec4 u_color;
@@ -54,9 +56,13 @@ void main(){
 </script>
 
 <script>
+
     var canvas = document.getElementById("c");
     var gl = canvas.getContext("webgl");
+
+//  셰이더 생성 함수
     function createShader(gl, type, source){
+//        두번째 인자로 받은 타입의 셰이더(버텍스 or 프래그먼트) 컨텍스트를 생성한다.
         var shader = gl.createShader(type);
         gl.shaderSource(shader, source);
         gl.compileShader(shader);
@@ -79,7 +85,8 @@ void main(){
     var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
     var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
 
-    function createProgram(gl, vertexSahder, fragmentShader){
+
+    function createProgram(gl, vertexShader, fragmentShader){
         var program = gl.createProgram();
         gl.attachShader(program, vertexShader);
         gl.attachShader(program, fragmentShader);
@@ -139,8 +146,9 @@ void main(){
         gl.uniform2fv(translationUniformLocation, translation);
         gl.uniform2fv(rotationUniformLocation, rotation);
         gl.uniform2fv(scaleUniformLocation, scale);
+
         var primitiveType = gl.TRIANGLES;
-        var offset = 0;
+//        var offset = 0;
         var count = 18;
         gl.drawArrays(primitiveType, offset, count);
     }
