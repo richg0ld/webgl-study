@@ -21,9 +21,13 @@ uniform mat3 u_matrix;
 
 void main(){
     vec2 position = (u_matrix * vec3(a_position, 1)).xy;
-	gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
+	vec2 zeroToOne = position / u_resolution;
+	vec2 zeroToTwo = zeroToOne * 2.0;
+	vec2 clipSpace = zeroToTwo - 1.0;
+	gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
 }
 </script>
+
 <script id="2d-fragment-shader" type="notjs">
 precision mediump float;
 
@@ -96,27 +100,45 @@ void main(){
      ];
      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
      */
+    //    var m3 = {
+    //        translation: function(tx, ty) {
+    //            return {
+    //                1,0,0,
+    //                0,1,0,
+    //                tx,ty,1,
+    //            }
+    //        },
+    //        rotation : function(angleInRadians){
+    //            var c = Math.cos(angleInRadians);
+    //            var s = Math.sin(angleInRadians);
+    //            return {
+    //                c,-s,0,
+    //                s,c,0,
+    //                0,0,1,
+    //            }
+    //        },
+    //        scaling: function(sx, sy) {
+    //            return {
+    //                sx, 0, 0,
+    //                0, sy, 0,
+    //                0, 0, 1,
+    //            }
+    //        }
+    //    };
 
     var m3 = {
-        projection: function(width, height) {
-            return [
-                2 / width, 0, 0,
-                0, -2 / height, 0,
-                -1, 1, 1
-            ];
-        },
         identity: function() {
             return [
                 1, 0, 0,
                 0, 1, 0,
-                0, 0, 1
+                0, 0, 1,
             ];
         },
         translation: function(tx, ty) {
             return [
                 1, 0, 0,
                 0, 1, 0,
-                tx, ty, 1
+                tx, ty, 1,
             ];
         },
 
@@ -126,7 +148,7 @@ void main(){
             return [
                 c,-s, 0,
                 s, c, 0,
-                0, 0, 1
+                0, 0, 1,
             ];
         },
 
@@ -166,18 +188,7 @@ void main(){
                 b20 * a01 + b21 * a11 + b22 * a21,
                 b20 * a02 + b21 * a12 + b22 * a22,
             ];
-        },
-        translate: function(m, tx, ty) {
-            return m3.multiply(m, m3.translation(tx, ty));
-        },
-
-        rotate: function(m, angleInRadians) {
-            return m3.multiply(m, m3.rotation(angleInRadians));
-        },
-
-        scale: function(m, sx, sy) {
-            return m3.multiply(m, m3.scaling(sx, sy));
-        },
+        }
     };
 
     function drawScene(){
@@ -185,23 +196,22 @@ void main(){
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-//      S: CPU코드 , 무조건 먼저 다 불러와야 한다.
         var program = createProgram(gl, vertexShader, fragmentShader);
         var positionBuffer = gl.createBuffer();
         var positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
+        var resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution');
         var colorUniformLocation = gl.getUniformLocation(program, 'u_color');
         var matrixUniformLocation = gl.getUniformLocation(program, 'u_matrix');
-
         var size = 2;
         var type = gl.FLOAT;
         var normalize = false;
         var stride = 0;
         var offset = 0;
-        var translation = [50, 100];
+        var translation = [100, 150];
 
         var rotation = 15;
         var angleInRadians = rotation * Math.PI / 180;
-        var scale = [0.9, 0.7];
+        var scale = [1, 0.5];
 
         var primitiveType = gl.TRIANGLES;
         var count = 18;
@@ -209,29 +219,23 @@ void main(){
         var translationMatrix = m3.translation(translation[0], translation[1]);
         var rotationMatrix = m3.rotation(angleInRadians);
         var scaleMatrix = m3.scaling(scale[0], scale[1]);
-//      E: CPU코드 , 무조건 먼저 다 불러와야 한다.
 
-        //S: 중요! 코드 순서에 따라 그림이 안그려 질 수도 있고
+
+
         gl.useProgram(program);
         gl.enableVertexAttribArray(positionAttributeLocation);
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        setGeometry(gl);
+        gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset);
+        gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
         gl.uniform4f(colorUniformLocation,  Math.random(), Math.random(), Math.random(), 1);
 
-        gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset);
-        setGeometry(gl);
-        //E: 중요! 코드 순서
 
-//        var matrix = m3.identity();
-//        matrix = m3.multiply(m3.projection(gl.canvas.width, gl.canvas.height ),matrix);
-        var matrix = m3.projection(gl.canvas.width, gl.canvas.height);
+        var matrix = m3.identity();
         for (var i = 0; i < 5; ++i) {
-//            matrix = m3.multiply(matrix, scaleMatrix);
-//            matrix = m3.multiply(matrix, rotationMatrix);
-//            matrix = m3.multiply(matrix, translationMatrix);
-            matrix = m3.translate(matrix, translation[0], translation[1]);
-            matrix = m3.rotate(matrix, angleInRadians);
-            matrix = m3.scale(matrix, scale[0], scale[1]);
-
+            matrix = m3.multiply(scaleMatrix, matrix);
+            matrix = m3.multiply(rotationMatrix, matrix);
+            matrix = m3.multiply(translationMatrix, matrix);
             gl.uniformMatrix3fv(matrixUniformLocation, false, matrix);
             gl.drawArrays(primitiveType, offset, count);
         }
