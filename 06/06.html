@@ -7,18 +7,12 @@
 </head>
 <body>
 <canvas id="c" width="500" height="500"></canvas>
-<script id="2d-vertex-shader" type="notjs">
-attribute vec4 a_position;
-void main(){
-	gl_Position = a_position;
-}
-</script>
 <!-- 현재 사용중인 버텍스 쉐이더 -->
 <script id="2d-vertex-shader2" type="notjs">
 attribute vec2 a_position;
 uniform mat3 u_matrix;
 
-attribute vec2 a_textCoord;
+attribute vec2 a_texCoord;
 varying vec2 v_texCoord;
 
 void main(){
@@ -26,26 +20,16 @@ void main(){
 	v_texCoord = a_texCoord;
 }
 </script>
-<script id="2d-fragment-shader" type="notjs">
+<!--사용중인 프래그먼트 셰이더-->
+<script id="2d-fragment-shader2" type="notjs">
 precision mediump float;
+varying vec4 v_color;
 
 uniform sampler2D u_image;
 varying vec2 v_texCoord;
 
 void main(){
 	gl_FragColor = texture2D(u_image, v_texCoord);
-}
-</script>
-<!--사용중인 프래그먼트 셰이더-->
-<script id="2d-fragment-shader2" type="notjs">
-precision mediump float;
-uniform vec4 u_color;
-varying vec4 v_color;
-
-
-
-void main(){
-	gl_FragColor = v_color;
 
 }
 </script>
@@ -255,14 +239,13 @@ void main(){
         gl.enableVertexAttribArray(texCoordAttributeLocation);
 //        바인드하고
         gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-        gl.bindBuffer(gl.ARRAY_BUFFER, new Float32Array([
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
             0.0, 0.0,
             1.0, 0.0,
             0.0, 1.0,
             0.0, 1.0,
             1.0, 0.0,
-            1.0, 1.0,
-        ]), gl.STATIC_DRAW);
+            1.0, 1.0,]), gl.STATIC_DRAW);
 //        칼라를 그려준다
         setColors(gl);
 //        포인터를 찍어준다
@@ -270,10 +253,10 @@ void main(){
 
         var texture = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texParameteri(ge.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(ge.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(ge.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(ge.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
 
         //E: 중요! 코드 순서
