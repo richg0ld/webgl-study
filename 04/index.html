@@ -16,12 +16,13 @@ void main(){
 <!-- 현재 사용중인 버텍스 쉐이더 -->
 <script id="2d-vertex-shader2" type="notjs">
 attribute vec2 a_position;
-uniform vec2 u_resolution;
+attribute vec4 a_color;
 uniform mat3 u_matrix;
+varying vec4 v_color;
 
 void main(){
-    vec2 position = (u_matrix * vec3(a_position, 1)).xy;
 	gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
+	v_color = a_color;
 }
 </script>
 <script id="2d-fragment-shader" type="notjs">
@@ -35,8 +36,9 @@ void main(){
 <script id="2d-fragment-shader2" type="notjs">
 precision mediump float;
 uniform vec4 u_color;
+varying vec4 v_color;
 void main(){
-	gl_FragColor = u_color;
+	gl_FragColor = v_color;
 }
 </script>
 
@@ -44,6 +46,17 @@ void main(){
 
     var canvas = document.getElementById("c");
     var gl = canvas.getContext("webgl");
+
+    //  상태머신은 뭘까..?
+    //  매쉬가 뭐였더라...ㅋㅋ
+    //    6개의 정점이 그룹이기 때문
+    //    6개의 정점을 하나의 그룹으로 취급해서
+    //    6개의 정점에 동일한 행렬변환을 적용하는 가상의 개념
+    //    그 가상의 그룹이 바로 매쉬
+    //    큐브를 점6개로 보지 않고
+
+    //    텍스처는 유니폼으로 들어온다.
+
 
     //  셰이더 생성 함수
     function createShader(gl, type, source){
@@ -119,7 +132,6 @@ void main(){
                 tx, ty, 1
             ];
         },
-
         rotation: function(angleInRadians) {
             var c = Math.cos(angleInRadians);
             var s = Math.sin(angleInRadians);
@@ -129,7 +141,6 @@ void main(){
                 0, 0, 1
             ];
         },
-
         scaling: function(sx, sy) {
             return [
                 sx, 0, 0,
@@ -188,23 +199,15 @@ void main(){
 //      S: CPU코드 , 무조건 먼저 다 불러와야 한다.
         var program = createProgram(gl, vertexShader, fragmentShader);
         var positionBuffer = gl.createBuffer();
+        var colorBuffer = gl.createBuffer();
         var positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
-        var colorUniformLocation = gl.getUniformLocation(program, 'u_color');
+        var colorAttributeLocation = gl.getAttribLocation(program, 'a_color');
         var matrixUniformLocation = gl.getUniformLocation(program, 'u_matrix');
 
-        var size = 2;
-        var type = gl.FLOAT;
-        var normalize = false;
-        var stride = 0;
-        var offset = 0;
         var translation = [50, 100];
-
         var rotation = 15;
         var angleInRadians = rotation * Math.PI / 180;
         var scale = [0.9, 0.7];
-
-        var primitiveType = gl.TRIANGLES;
-        var count = 18;
 
         var translationMatrix = m3.translation(translation[0], translation[1]);
         var rotationMatrix = m3.rotation(angleInRadians);
@@ -213,21 +216,44 @@ void main(){
 
         //S: 중요! 코드 순서에 따라 그림이 안그려 질 수도 있고
         gl.useProgram(program);
+
+        var size = 2;
+        var type = gl.FLOAT;
+        var normalize = false;
+        var stride = 0;
+        var offset = 0;
+
         gl.enableVertexAttribArray(positionAttributeLocation);
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.uniform4f(colorUniformLocation,  Math.random(), Math.random(), Math.random(), 1);
-
-        gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset);
         setGeometry(gl);
+        gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset);
+
+//        normalize(노멀라이즈) :  데이터를 균일하게 만들어주는 과정
+        size=4;
+        type=gl.UNSIGNED_BYTE;
+        normalize=true;
+        stride=0;
+        offset=0;
+
+//        버택스 받아드리고
+        gl.enableVertexAttribArray(colorAttributeLocation);
+//        바인드하고
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+//        칼라를 그려준다
+        setColors(gl);
+//        포인터를 찍어준다
+        gl.vertexAttribPointer(colorAttributeLocation, size, type, normalize, stride, offset);
+
         //E: 중요! 코드 순서
 
+//        프로젝션이란......들엇었는데 잊은걸보니 이해못한듯
 //        var matrix = m3.identity();
 //        matrix = m3.multiply(m3.projection(gl.canvas.width, gl.canvas.height ),matrix);
         var matrix = m3.projection(gl.canvas.width, gl.canvas.height);
+
+        var primitiveType = gl.TRIANGLES;
+        var count = 6;
         for (var i = 0; i < 5; ++i) {
-//            matrix = m3.multiply(matrix, scaleMatrix);
-//            matrix = m3.multiply(matrix, rotationMatrix);
-//            matrix = m3.multiply(matrix, translationMatrix);
             matrix = m3.translate(matrix, translation[0], translation[1]);
             matrix = m3.rotate(matrix, angleInRadians);
             matrix = m3.scale(matrix, scale[0], scale[1]);
@@ -240,6 +266,7 @@ void main(){
     function randomInt(range){
         return Math.floor(Math.random() * range);
     }
+
     //    각도 계산하는 함수
     function printSineAndCosineForAnAngle(angleInDegrees) {
         var rotation = [];
@@ -261,36 +288,36 @@ void main(){
         ]), gl.STATIC_DRAW);
     }
 
-    function setGeometry(gl){
+    function setColors(gl){
+//      언사인드바이트는 부호가 없는 바이트 0~256
         gl.bufferData(
             gl.ARRAY_BUFFER,
-            new Float32Array([
-                0,0,
-                30,0,
-                0, 150,
-                0, 150,
-                30, 0,
-                30, 150,
-
-                30, 0,
-                100, 0,
-                30, 30,
-                30, 30,
-                100, 0,
-                100, 30,
-
-                30, 60,
-                67, 60,
-                30, 90,
-                30, 90,
-                67, 60,
-                67, 90
+            new Uint8Array([
+                Math.random()*256, Math.random()*256, Math.random()*256, 255,
+                Math.random()*256, Math.random()*256, Math.random()*256, 255,
+                Math.random()*256, Math.random()*256, Math.random()*256, 255,
+                Math.random()*256, Math.random()*256, Math.random()*256, 255,
+                Math.random()*256, Math.random()*256, Math.random()*256, 255,
+                Math.random()*256, Math.random()*256, Math.random()*256, 255
             ]),
             gl.STATIC_DRAW
         );
     }
 
-    //    setGeometry(gl, 200, 120);
+    function setGeometry(gl){
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array([
+                -150, -100,
+                150, -100,
+                -150,  100,
+                150, -100,
+                -150,  100,
+                150,  100]),
+            gl.STATIC_DRAW
+        );
+    }
+
     drawScene();
 </script>
 </body>
