@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html>
 <head>
@@ -7,8 +6,7 @@
 </head>
 <body>
 <canvas id="c" width="500" height="500"></canvas>
-<!-- 현재 사용중인 버텍스 쉐이더 -->
-<script id="2d-vertex-shader2" type="notjs">
+<script id="2d-vertex-shader" type="notjs">
 attribute vec2 a_position;
 uniform mat3 u_matrix;
 
@@ -20,8 +18,7 @@ void main(){
 	v_texCoord = a_texCoord;
 }
 </script>
-<!--사용중인 프래그먼트 셰이더-->
-<script id="2d-fragment-shader2" type="notjs">
+<script id="2d-fragment-shader" type="notjs">
 precision mediump float;
 
 uniform sampler2D u_image;
@@ -53,20 +50,7 @@ void main(){
     var canvas = document.getElementById("c");
     var gl = canvas.getContext("webgl");
 
-    //  상태머신은 뭘까..?
-    //  매쉬가 뭐였더라...ㅋㅋ
-    //    6개의 정점이 그룹이기 때문
-    //    6개의 정점을 하나의 그룹으로 취급해서
-    //    6개의 정점에 동일한 행렬변환을 적용하는 가상의 개념
-    //    그 가상의 그룹이 바로 매쉬
-    //    큐브를 점6개로 보지 않고
-
-    //    텍스처는 유니폼으로 들어온다.
-
-
-    //  셰이더 생성 함수
     function createShader(gl, type, source){
-//        두번째 인자로 받은 타입의 셰이더(버텍스 or 프래그먼트) 컨텍스트를 생성한다.
         var shader = gl.createShader(type);
         gl.shaderSource(shader, source);
         gl.compileShader(shader);
@@ -83,8 +67,8 @@ void main(){
         gl.deleteShader(shader);
     }
 
-    var vertexShaderSource = document.getElementById("2d-vertex-shader2").text;
-    var fragmentShaderSource = document.getElementById("2d-fragment-shader2").text;
+    var vertexShaderSource = document.getElementById("2d-vertex-shader").text;
+    var fragmentShaderSource = document.getElementById("2d-fragment-shader").text;
 
     var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
     var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
@@ -200,59 +184,65 @@ void main(){
     }
 
     function render(image){
+
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-//      S: CPU코드 , 무조건 먼저 다 불러와야 한다.
-//        프로그램은 적재 후 메모리 실제 배치, 실행
-//        프로그램은 그저 바이너리 파일 또는 메모리 조각일뿐
-//        적재..실제 사용할 메모리를 할당받고 거기에 맞처 가상 포인터를 실제 포인터에 매핑하는 작업이 일어남
-        var program = createProgram(gl, vertexShader, fragmentShader);
-        var positionBuffer = gl.createBuffer();
-
-        var positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
-
-
-        var matrixUniformLocation = gl.getUniformLocation(program, 'u_matrix');
-
-        var translation = [50, 100];
+        var translation = [75, 100];
         var rotation = 15;
         var angleInRadians = rotation * Math.PI / 180;
         var scale = [0.9, 0.7];
 
-//        var translationMatrix = m3.translation(translation[0], translation[1]);
-//        var rotationMatrix = m3.rotation(angleInRadians);
-//        var scaleMatrix = m3.scaling(scale[0], scale[1]);
-//      E: CPU코드 , 무조건 먼저 다 불러와야 한다.
+        var program = createProgram(gl, vertexShader, fragmentShader);
 
-        //S: 중요! 코드 순서에 따라 그림이 안그려 질 수도 있고
-//        가상포인터를 실제로 메모리에 적제하는것이 유즈프로그램
-//        유니폼 할당하거나 할때 유즈프래임을 꼭 사용
         gl.useProgram(program);
 
+        //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//        묶음
+
+        var positionBuffer = gl.createBuffer();
+        var positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
+        var matrixUniformLocation = gl.getUniformLocation(program, 'u_matrix');
 
         var size = 2;
         var type = gl.FLOAT;
         var normalize = false;
         var stride = 0;
         var offset = 0;
+
         gl.enableVertexAttribArray(positionAttributeLocation);
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
         setGeometry(gl);
         gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset);
 
-//        normalize(노멀라이즈) :  데이터를 균일하게 만들어주는 과정
+//        묶음
+
+        var texCoordBuffer = gl.createBuffer();
+        var texCoordAttributeLocation = gl.getAttribLocation(program, 'a_texCoord');
+        var textureSizeUniformLocation = gl.getUniformLocation(program, 'u_textureSize');
+
         size=2;
         type=gl.FLOAT;
         normalize=false;
         stride=0;
         offset=0;
 
-        var texCoordBuffer = gl.createBuffer();
-        var texCoordAttributeLocation = gl.getAttribLocation(program, 'a_texCoord');
-        var textureSizeUniformLocation = gl.getUniformLocation(program, 'u_textureSize');
         gl.uniform2f(textureSizeUniformLocation, image.width, image.height);
+        gl.enableVertexAttribArray(texCoordAttributeLocation);
+        gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            0.0, 0.0,
+            1.0, 0.0,
+            0.0, 1.0,
+            1.0, 0.0,
+            0.0, 1.0,
+            1.0, 1.0]), gl.STATIC_DRAW);
+        gl.vertexAttribPointer(texCoordAttributeLocation, size, type, normalize, stride, offset);
+
+//        묶음
+
         var kernelLocation = gl.getUniformLocation(program, "u_kernel[0]");
         var kernelWeightLocation = gl.getUniformLocation(program, "u_kernelWeight");
         var edgeDetectKernel = [
@@ -262,20 +252,6 @@ void main(){
         ];
         gl.uniform1fv(kernelLocation, edgeDetectKernel);
         gl.uniform1f(kernelWeightLocation, computeKernelWeight(edgeDetectKernel));
-//        버택스 받아드리고
-        gl.enableVertexAttribArray(texCoordAttributeLocation);
-//        바인드하고
-        gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-            0.0, 0.0,
-            1.0, 0.0,
-            0.0, 1.0,
-            1.0, 0.0,
-            0.0, 1.0,
-            1.0, 1.0]), gl.STATIC_DRAW);
-//        칼라를 그려준다
-//        포인터를 찍어준다
-        gl.vertexAttribPointer(texCoordAttributeLocation, size, type, normalize, stride, offset);
 
         var texture = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -285,11 +261,8 @@ void main(){
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
 
-        //E: 중요! 코드 순서
+        //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//        프로젝션이란......들엇었는데 잊은걸보니 이해못한듯
-//        var matrix = m3.identity();
-//        matrix = m3.multiply(m3.projection(gl.canvas.width, gl.canvas.height ),matrix);
         var matrix = m3.projection(gl.canvas.width, gl.canvas.height);
 
         var primitiveType = gl.TRIANGLES;
@@ -308,13 +281,11 @@ void main(){
         return Math.floor(Math.random() * range);
     }
 
-    //    각도 계산하는 함수
     function printSineAndCosineForAnAngle(angleInDegrees) {
         var rotation = [];
         var angleInRadians = angleInDegrees * Math.PI / 180;
         rotation[0] = Math.sin(angleInRadians);
         rotation[1] = Math.cos(angleInRadians);
-//        console.log("s = " + s + " c = " + c);
         return rotation;
     }
 
@@ -330,7 +301,6 @@ void main(){
     }
 
     function setColors(gl){
-//      언사인드바이트는 부호가 없는 바이트 0~256
         gl.bufferData(
             gl.ARRAY_BUFFER,
             new Uint8Array([
